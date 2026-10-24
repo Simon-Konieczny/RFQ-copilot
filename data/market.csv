@@ -1,0 +1,16 @@
+as_of,ticker,name,type,currency,spot,vol,rate,div_yield,aliases
+2026-10-22,SX5E,Euro Stoxx 50,index,EUR,5400,0.16,0.02,0.03,sx5e|eurostoxx|euro stoxx|euro stoxx 50|eurostoxx 50|estoxx|stoxx 50
+2026-10-22,SPX,S&P 500,index,USD,6700,0.15,0.039,0.013,spx|s&p|s&p 500|s&p500|sp500|spoos
+2026-10-22,NDX,Nasdaq 100,index,USD,24500,0.19,0.039,0.007,ndx|nasdaq|nasdaq 100|nasdaq-100|nq
+2026-10-22,UKX,FTSE 100,index,GBP,9300,0.13,0.038,0.036,ukx|ftse|ftse 100|footsie
+2026-10-22,DAX,DAX 40,index,EUR,24000,0.17,0.02,0.0,dax|dax 40
+2026-10-22,CAC,CAC 40,index,EUR,7900,0.16,0.02,0.031,cac|cac 40|cac40
+2026-10-22,NKY,Nikkei 225,index,JPY,45000,0.21,0.006,0.018,nky|nikkei|nikkei 225
+2026-10-22,SMI,Swiss Market Index,index,CHF,12300,0.13,0.0,0.03,smi|swiss market index
+2026-10-22,AAPL,Apple,stock,USD,250,0.25,0.039,0.004,aapl|apple
+2026-10-22,NVDA,NVIDIA,stock,USD,180,0.45,0.039,0.0002,nvda|nvidia
+2026-10-22,TSLA,Tesla,stock,USD,420,0.55,0.039,0.0,tsla|tesla
+2026-10-22,ASML,ASML Holding,stock,EUR,900,0.35,0.02,0.008,asml
+2026-10-22,MC,LVMH,stock,EUR,600,0.28,0.02,0.022,mc|lvmh
+2026-10-22,BNP,BNP Paribas,stock,EUR,75,0.25,0.02,0.065,bnp|bnp paribas|bnpp
+2026-10-22,TTE,TotalEnergies,stock,EUR,55,0.22,0.02,0.058,tte|total|totalenergies
