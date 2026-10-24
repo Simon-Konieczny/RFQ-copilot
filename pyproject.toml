@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rfq-copilot"
+version = "0.1.0"
+description = "LLM agent that parses equity option RFQs, prices them with Black-Scholes, and drafts quotes for human approval"
+requires-python = ">=3.11"
+dependencies = ["pandas", "scipy", "pydantic>=2"]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+# setuptools finds packages under src/ automatically (src layout)
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
