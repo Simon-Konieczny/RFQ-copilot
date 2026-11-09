@@ -7,12 +7,28 @@ name = "rfq-copilot"
 version = "0.1.0"
 description = "LLM agent that parses equity option RFQs, prices them with Black-Scholes, and drafts quotes for human approval"
 requires-python = ">=3.11"
-dependencies = ["pandas", "scipy", "pydantic>=2"]
+dependencies = ["pandas", "scipy", "pydantic>=2", "google-genai>=2.30", "langgraph>=1.0"]
 
 [project.optional-dependencies]
-dev = ["pytest"]
+dev = ["pytest", "ruff"]
 
 # setuptools finds packages under src/ automatically (src layout)
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["eval"]  # so tests can import run_eval
+
+# Lint only: `ruff check`. No formatter, so code is never rewritten behind my back.
+[tool.ruff]
+line-length = 120
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+# E/W: pycodestyle, F: pyflakes (unused names, undefined vars), I: import order, B: likely bugs
+select = ["E", "W", "F", "I", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+"data/build_data.py" = ["E501", "E702", "E731", "B905"]  # generator script: long literal rows
+"src/rfq_copilot/prompts.py" = ["E501"]  # rewrapping the prompt changes it and invalidates the LLM cache
+"src/rfq_copilot/agent_loop.py" = ["B007"]
+"eval/report.py" = ["E501"]  # inline HTML/CSS templates read better unwrapped  # `steps` is read after the loop on purpose

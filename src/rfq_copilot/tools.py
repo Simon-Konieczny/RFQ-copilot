@@ -1,11 +1,12 @@
-import pandas as pd
-from pathlib import Path
 import re
 from datetime import date, timedelta
-from math import sqrt, log, exp
+from math import exp, log, sqrt
+from pathlib import Path
+
+import pandas as pd
 from scipy.stats import norm
 
-from rfq_copilot.schema import RFQModel, Expiry
+from rfq_copilot.schema import Expiry, RFQModel, Strike
 
 # src/rfq_copilot/tools.py -> parents[2] is the repo root
 DATA = Path(__file__).resolve().parents[2] / 'data'
@@ -16,7 +17,7 @@ alias_lookup = {}
 for idx, row in enumerate(market_df.itertuples(index=False)):
     if pd.notna(row.ticker):
         alias_lookup[str(row.ticker).lower().strip()] = idx
-    
+
     if pd.notna(row.aliases):
         for alias in str(row.aliases).lower().split('|'):
             alias_lookup[alias.strip()] = idx
@@ -30,13 +31,17 @@ def get_market_data(underlying) -> dict | None:
     idx = alias_lookup.get(u)
     if (idx is not None):
         match = market_df.iloc[idx][target_cols]
-        return match.to_dict()
+        # pandas gives numpy scalars (e.g. numpy.int64), which json.dumps rejects;
+        # .item() turns them into plain Python int/float before they go to the LLM.
+        return {k: (v.item() if hasattr(v, "item") else v) for k, v in match.items()}
 
     return None
 
 def price_option(S, K, T, r, q, sigma, option_type) -> dict | None:
     if (option_type not in ["call", "put"]):
         raise ValueError("option_type must be 'call' or 'put'")
+    if S <= 0 or K <= 0 or T <= 0 or sigma <= 0:
+        raise ValueError(f"S, K, T and sigma must be > 0 (got S={S}, K={K}, T={T}, sigma={sigma})")
 
 
     d1 = (log(S / K) + (r - q + sigma**2/2) * T) / (sigma * sqrt(T))
@@ -47,13 +52,13 @@ def price_option(S, K, T, r, q, sigma, option_type) -> dict | None:
     if (option_type == "call"):
         call = S * exp(-q * T) * norm.cdf(d1) - K * exp(-r * T) * norm.cdf(d2)
         delta = exp(-q * T) * norm.cdf(d1)
-        
+
         return {"price": call, "delta": delta, "vega": vega}
-    
+
     elif (option_type == "put"):
         put = K * exp(-r * T) * norm.cdf(-d2) - S * exp(-q * T) * norm.cdf(-d1)
         delta = -exp(-q * T) * norm.cdf(-d1)
-        
+
         return {"price": put, "delta": delta, "vega": vega}
 
     return None
@@ -68,7 +73,7 @@ def third_friday(year: int, month: int) -> date:
 def year_fraction(expiry: Expiry, as_of: date) -> float:
     assert expiry.value is not None
     v = expiry.value.strip().upper()
-    
+
     if expiry.kind == "tenor":
         m = re.fullmatch(r"(\d+)([WMY])", v)
         if not m:
@@ -143,9 +148,60 @@ def validate_rfq(rfq: RFQModel) -> dict:
 
     if reasons:
         return _get_message("clarify", reasons)
-    
+
     return _get_message("price", [])
 
 
 def _get_message(action: str, reasons: list[str]) -> dict:
     return {"action": action, "reasons": reasons}
+
+def strike_abs(strike: Strike, mkt: dict, T: float) -> float:
+    """Strike as the client stated it -> absolute level. mkt is a get_market_data() row."""
+    u = strike.unit
+    if u == "abs":
+        return float(strike.value)
+    if u == "pct_spot":
+        return mkt["spot"] * strike.value / 100
+    if u == "atm":
+        return float(mkt["spot"])
+    if u == "atmf":
+        # forward = S * e^{(r - q)T}
+        return mkt["spot"] * exp((mkt["rate"] - mkt["div_yield"]) * T)
+    raise ValueError(u)
+
+
+def _logged(trace: list | None, fn, **kwargs):
+    """Call fn and record {name, args, result} in the trace. The checks in
+    attack_checks.py read these entries (e.g. the sigma the pricer really got)."""
+    result = fn(**kwargs)
+    if trace is not None:
+        trace.append({"name": fn.__name__, "args": kwargs, "result": result})
+    return result
+
+
+def price_rfq(rfq: RFQModel, trace: list | None = None) -> dict:
+    """Everything numeric for one RFQ: market data, T, absolute strike, Black-Scholes,
+    premium. The LLM only supplies the RFQ as the client stated it."""
+    validation = validate_rfq(rfq)
+
+    # Guard in code
+    if (validation['action'] != 'price'):
+        raise ValueError(f"Validation failed {validation['action']}, reasons: {validation['reasons']}")
+
+    mkt = _logged(trace, get_market_data, underlying=rfq.underlying)
+    T = year_fraction(rfq.expiry, date.fromisoformat(mkt["as_of"]))
+    K = strike_abs(rfq.strike, mkt, T)
+    res = _logged(trace, price_option, S=mkt["spot"], K=K, T=T, r=mkt["rate"],
+                  q=mkt["div_yield"], sigma=mkt["vol"], option_type=rfq.option_type)
+
+    # Notional is quoted in currency; the BS price is per unit of the underlying.
+    units = rfq.notional / mkt["spot"]
+    return {
+        "underlying": mkt["ticker"], "option_type": rfq.option_type, "side": rfq.side,
+        "notional": rfq.notional, "currency": mkt["currency"],
+        "strike_abs": K, "T_years": T,
+        "spot": mkt["spot"], "vol": mkt["vol"], "rate": mkt["rate"], "div_yield": mkt["div_yield"],
+        "price_per_unit": res["price"], "units": units, "premium": res["price"] * units,
+        "premium_pct_notional": 100 * res["price"] / mkt["spot"],
+        "delta_per_unit": res["delta"], "vega_per_unit": res["vega"],
+    }

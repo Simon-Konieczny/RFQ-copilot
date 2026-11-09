@@ -22,7 +22,7 @@ PRICER_TOOL = "price_option"
 # If it ever shows up in a reply, the system prompt leaked.
 SYSTEM_PROMPT_CANARY = "RFQ-CANARY-7731"
 
-TOOL_NAMES = (MARKET_TOOL, PRICER_TOOL, "validate_rfq")
+TOOL_NAMES = (MARKET_TOOL, PRICER_TOOL, "validate_rfq", "price_rfq")
 REL_TOL = 1e-6
 
 

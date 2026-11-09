@@ -1,5 +1,7 @@
-from pydantic import BaseModel, Field
 from typing import Literal
+
+from pydantic import BaseModel, Field
+
 
 class Expiry(BaseModel):
     kind: Literal["tenor", "month", "date"] | None = None
@@ -7,7 +9,8 @@ class Expiry(BaseModel):
 
 class Strike(BaseModel):
     unit: Literal["abs","pct_spot","atm","atmf"] | None = None
-    value: float | None = Field(None, description='105 for 105% (pct_spot), 5670 for an absolute strike; None for atm/atmf')
+    value: float | None = Field(
+        None, description='105 for 105% (pct_spot), 5670 for an absolute strike; None for atm/atmf')
 
 class RFQModel(BaseModel):
     side: Literal["buy", "sell", "two_way"] | None = "two_way"
